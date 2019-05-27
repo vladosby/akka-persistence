@@ -17,6 +17,9 @@ object PersistentActors extends App {
 
   case class InvoiceBulk(invoices: List[Invoice])
 
+  // Special messsages
+  case object Shutdown
+
   // EVENTS
   case class InvoiceRecorded(id: Int, recipient: String, date: Date, amount: Int)
 
@@ -68,6 +71,9 @@ object PersistentActors extends App {
           totalAmount += e.amount
           log.info(s"Persisted SINGLE $e as invoice #${e.id}, for total amount $totalAmount")
         }
+
+      case Shutdown =>
+        context.stop(self)
     }
 
     /**
@@ -119,4 +125,6 @@ object PersistentActors extends App {
   /*
   NEVER EVER CALL PERSIST OR PERSISTALL FROM FUTURES.
  */
+
+  accountant ! Shutdown
 }
