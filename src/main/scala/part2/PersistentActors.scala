@@ -38,8 +38,7 @@ object PersistentActors extends App {
          */
         log.info(s"Receive invoice for amount: $amount")
         persist(InvoiceRecorded(latestInvoiceId, recipient, date, amount))
-          /* time gap: all other messages sent to this actor are STASHED */
-        { e =>
+          /* time gap: all other messages sent to this actor are STASHED */ { e =>
           // SAFE to access mutable state here
 
           // update state
@@ -52,8 +51,8 @@ object PersistentActors extends App {
     }
 
     /**
-      Handler that will be called on recovery
-     */
+      * Handler that will be called on recovery
+      */
     override def receiveRecover: Receive = {
       /*
         best practice: follow the logic in the persist steps of receiveCommand
@@ -63,6 +62,28 @@ object PersistentActors extends App {
         totalAmount += amount
         log.info(s"Recovered invoice #$id for amount $amount, total amount: $totalAmount")
     }
+
+    /*
+      This method is called if persisting failed.
+      The actor will be STOPPED.
+
+      Best practice: start the actor again after a while.
+      (use Backoff supervisor)
+    */
+    override def onPersistFailure(cause: Throwable, event: Any, seqNr: Long): Unit = {
+      log.error(s"Fail to persist $event because of $cause")
+      super.onPersistFailure(cause, event, seqNr)
+    }
+
+    /*
+     Called if the JOURNAL fails to persist the event
+      The actor is RESUMED.
+    */
+    override def onPersistRejected(cause: Throwable, event: Any, seqNr: Long): Unit = {
+      log.error(s"Persist rejected for $event because of $cause")
+      super.onPersistRejected(cause, event, seqNr)
+    }
+
   }
 
   val system = ActorSystem("PersistentActors")
