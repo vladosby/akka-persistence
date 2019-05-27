@@ -15,6 +15,8 @@ object PersistentActors extends App {
   // COMMANDS
   case class Invoice(recipient: String, date: Date, amount: Int)
 
+  case class InvoiceBulk(invoices: List[Invoice])
+
   // EVENTS
   case class InvoiceRecorded(id: Int, recipient: String, date: Date, amount: Int)
 
@@ -47,6 +49,24 @@ object PersistentActors extends App {
 
           // correctly identify the sender of the COMMAND
           log.info(s"Persisted $e as invoice #${e.id}, for total amount $totalAmount")
+        }
+      case InvoiceBulk(invoices) =>
+        /*
+          1) create events (plural)
+          2) persist all the events
+          3) update the actor state when each event is persisted
+         */
+        val invoiceIds = latestInvoiceId to (latestInvoiceId + invoices.size)
+        val events = invoices.zip(invoiceIds).map { pair =>
+          val id = pair._2
+          val invoice = pair._1
+
+          InvoiceRecorded(id, invoice.recipient, invoice.date, invoice.amount)
+        }
+        persistAll(events) { e =>
+          latestInvoiceId += 1
+          totalAmount += e.amount
+          log.info(s"Persisted SINGLE $e as invoice #${e.id}, for total amount $totalAmount")
         }
     }
 
@@ -92,4 +112,7 @@ object PersistentActors extends App {
   for (i <- 1 to 10) {
     accountant ! Invoice("The Sofa Company", new Date, i * 1000)
   }
+
+  val newInvoices = for (i <- 1 to 5) yield Invoice("The awesome chairs", new Date, i * 2000)
+    accountant ! InvoiceBulk(newInvoices.toList)
 }
