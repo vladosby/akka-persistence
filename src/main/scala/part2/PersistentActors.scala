@@ -115,4 +115,8 @@ object PersistentActors extends App {
 
   val newInvoices = for (i <- 1 to 5) yield Invoice("The awesome chairs", new Date, i * 2000)
     accountant ! InvoiceBulk(newInvoices.toList)
+
+  /*
+  NEVER EVER CALL PERSIST OR PERSISTALL FROM FUTURES.
+ */
 }
